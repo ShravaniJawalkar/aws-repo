@@ -1,0 +1,22 @@
+#cloud-config
+# Cloud-init configuration for EC2 instance
+
+repo_update: true
+repo_upgrade: all
+
+packages:
+  - httpd
+
+runcmd:
+  - echo "Starting Apache configuration..."
+  - systemctl start httpd
+  - systemctl enable httpd
+  - echo "Syncing website from S3..."
+  - aws s3 sync s3://shravani-jawalkar-web-project /var/www/html --region ap-south-1
+  - echo "Setting permissions..."
+  - chmod -R 755 /var/www/html
+  - chown -R apache:apache /var/www/html
+  - systemctl restart httpd
+  - echo "Setup complete!"
+
+final_message: "EC2 instance setup completed successfully!"

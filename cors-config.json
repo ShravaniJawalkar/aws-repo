@@ -1,0 +1,8 @@
+[
+     {
+          "AllowedHeaders": ["*"],
+          "AllowedMethods": ["GET"],
+          "AllowedOrigins": ["http://shravani-jawalkar-web-project.s3-website-us-east-1.amazonaws.com"],
+          "ExposeHeaders": []
+     }
+]

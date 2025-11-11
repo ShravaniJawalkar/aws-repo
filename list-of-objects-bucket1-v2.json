@@ -1,0 +1,83 @@
+{
+    "Contents": [
+        {
+            "Key": "about.html",
+            "LastModified": "2025-11-07T05:23:09+00:00",
+            "ETag": "\"32e523d817743fcbe1f946755ed41368\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 1762,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "contact.html",
+            "LastModified": "2025-11-07T05:23:09+00:00",
+            "ETag": "\"4cf5af8862777bd4329e66b76724c798\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 1560,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "error.html",
+            "LastModified": "2025-11-07T05:23:09+00:00",
+            "ETag": "\"9948cd897ce2a3778542a7516561bb73\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 1100,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "index.html",
+            "LastModified": "2025-11-07T06:27:07+00:00",
+            "ETag": "\"ed2104b905c1e7e475bb2f9bc6522d50\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 1810,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "projects.html",
+            "LastModified": "2025-11-07T05:23:09+00:00",
+            "ETag": "\"5cad6aff467b6e73ab0b1354fc74c74c\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 2473,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "services.html",
+            "LastModified": "2025-11-07T06:26:34+00:00",
+            "ETag": "\"5ae92b05e373ac9c9c15eb6c0616b8d2\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 4265,
+            "StorageClass": "STANDARD"
+        },
+        {
+            "Key": "styles.css",
+            "LastModified": "2025-11-07T05:23:09+00:00",
+            "ETag": "\"367ce71bf3bc2934d322d596fb8c98ff\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 4052,
+            "StorageClass": "STANDARD"
+        }
+    ],
+    "RequestCharged": null,
+    "Prefix": ""
+}

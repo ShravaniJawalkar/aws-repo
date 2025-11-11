@@ -1,0 +1,134 @@
+{
+    "Versions": [
+        {
+            "ETag": "\"7d21de80946771884099bb19d67cabc9\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 354,
+            "StorageClass": "STANDARD",
+            "Key": "file1.txt",
+            "VersionId": "xKUOYGL1sQv0Dih.1uKN0T62wbYJJtlS",
+            "IsLatest": true,
+            "LastModified": "2025-11-07T06:32:50+00:00",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "ETag": "\"5b446447047de81440dac3b2c36711cd\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 293,
+            "StorageClass": "STANDARD",
+            "Key": "file1.txt",
+            "VersionId": "NmLY9DYn6_HOnI_jfMHks8RWdXRzS4wh",
+            "IsLatest": false,
+            "LastModified": "2025-11-07T06:31:55+00:00",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "ETag": "\"af089ecdbbf593b730bdae63b1a5c2d9\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 107,
+            "StorageClass": "STANDARD",
+            "Key": "file1.txt",
+            "VersionId": "AIrwdT2Vgp6EoY_64XqxEz0pYc1QcSZ6",
+            "IsLatest": false,
+            "LastModified": "2025-11-07T06:30:39+00:00",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "ETag": "\"28cad20c1e483c31f5c4d882bdffc656\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 111,
+            "StorageClass": "STANDARD",
+            "Key": "file2.txt",
+            "VersionId": "pZIS2PgOQLcSimPRDeIgBDUyk0YzqT6V",
+            "IsLatest": true,
+            "LastModified": "2025-11-07T06:30:47+00:00",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "ETag": "\"925a605f8b329d5b4b405fcfb0dd6e50\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 112,
+            "StorageClass": "STANDARD",
+            "Key": "file3.txt",
+            "VersionId": "6dkHrcAawOL33yrHwEPACz2CC475HUXm",
+            "IsLatest": true,
+            "LastModified": "2025-11-07T06:30:55+00:00",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "ETag": "\"ed2104b905c1e7e475bb2f9bc6522d50\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 1810,
+            "StorageClass": "STANDARD",
+            "Key": "index.html",
+            "VersionId": "3CRMKyYKsWHkOx1UBE5ZAAyOMEuo_lDz",
+            "IsLatest": true,
+            "LastModified": "2025-11-07T06:27:07+00:00",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "ETag": "\"ed2104b905c1e7e475bb2f9bc6522d50\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 1810,
+            "StorageClass": "STANDARD",
+            "Key": "index.html",
+            "VersionId": "K4Mze_mbm2Q2ijXxy4tpIn1EBh0KQFnt",
+            "IsLatest": false,
+            "LastModified": "2025-11-07T06:26:45+00:00",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "ETag": "\"5ae92b05e373ac9c9c15eb6c0616b8d2\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 4265,
+            "StorageClass": "STANDARD",
+            "Key": "services.html",
+            "VersionId": "lcexY47UYIngNvaliWmpJPKX.DwnOhgf",
+            "IsLatest": true,
+            "LastModified": "2025-11-07T06:26:34+00:00",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        }
+    ],
+    "RequestCharged": null,
+    "Prefix": ""
+}

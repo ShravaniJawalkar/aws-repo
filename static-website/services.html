@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Services - Shravani Jawalkar</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            padding: 2rem 0;
+        }
+        .service-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .service-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .service-card h3 {
+            color: #232f3e;
+            margin-bottom: 0.5rem;
+        }
+        .service-card p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <h1>Shravani Jawalkar</h1>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="projects.html">Projects</a></li>
+                <li><a href="services.html">AWS Services</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h2>AWS Services I Work With</h2>
+            <p>Exploring and implementing cloud solutions using Amazon Web Services</p>
+        </section>
+
+        <section class="services-grid">
+            <div class="service-card">
+                <div class="service-icon">📦</div>
+                <h3>Amazon S3</h3>
+                <p>Object storage service for static website hosting, data backup, and cross-region replication</p>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🔐</div>
+                <h3>AWS IAM</h3>
+                <p>Identity and Access Management for secure access control and user permissions</p>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">☁️</div>
+                <h3>Amazon EC2</h3>
+                <p>Elastic Compute Cloud for scalable virtual servers in the cloud</p>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🗄️</div>
+                <h3>Amazon RDS</h3>
+                <p>Relational Database Service for managed database solutions</p>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">⚡</div>
+                <h3>AWS Lambda</h3>
+                <p>Serverless compute service for running code without managing servers</p>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🌐</div>
+                <h3>Amazon CloudFront</h3>
+                <p>Content Delivery Network for fast and secure content distribution</p>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🔔</div>
+                <h3>Amazon SNS</h3>
+                <p>Simple Notification Service for pub/sub messaging and notifications</p>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">📊</div>
+                <h3>Amazon CloudWatch</h3>
+                <p>Monitoring and observability service for AWS resources and applications</p>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon">🚀</div>
+                <h3>AWS CloudFormation</h3>
+                <p>Infrastructure as Code service for automated resource provisioning</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Shravani Jawalkar. All rights reserved.</p>
+    </footer>
+</body>
+</html>

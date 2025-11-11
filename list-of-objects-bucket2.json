@@ -1,0 +1,76 @@
+{
+    "Contents": [
+        {
+            "Key": "file1.txt",
+            "LastModified": "2025-11-07T06:32:50+00:00",
+            "ETag": "\"7d21de80946771884099bb19d67cabc9\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 354,
+            "StorageClass": "STANDARD",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "Key": "file2.txt",
+            "LastModified": "2025-11-07T06:30:47+00:00",
+            "ETag": "\"28cad20c1e483c31f5c4d882bdffc656\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 111,
+            "StorageClass": "STANDARD",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "Key": "file3.txt",
+            "LastModified": "2025-11-07T06:30:55+00:00",
+            "ETag": "\"925a605f8b329d5b4b405fcfb0dd6e50\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 112,
+            "StorageClass": "STANDARD",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "Key": "index.html",
+            "LastModified": "2025-11-07T06:27:07+00:00",
+            "ETag": "\"ed2104b905c1e7e475bb2f9bc6522d50\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 1810,
+            "StorageClass": "STANDARD",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        },
+        {
+            "Key": "services.html",
+            "LastModified": "2025-11-07T06:26:34+00:00",
+            "ETag": "\"5ae92b05e373ac9c9c15eb6c0616b8d2\"",
+            "ChecksumAlgorithm": [
+                "CRC64NVME"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 4265,
+            "StorageClass": "STANDARD",
+            "Owner": {
+                "ID": "26685c71d0836867d9bf4b99556a5afae41daff5f41eb56378662eab87a59d6a"
+            }
+        }
+    ],
+    "RequestCharged": null,
+    "Prefix": ""
+}

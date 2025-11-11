@@ -1,0 +1,5 @@
+{
+  "RoleName": "S3ReplicationRole",
+  "PolicyName": "S3ReplicationPolicy",
+  "PolicyDocument": ""
+}

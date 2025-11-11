@@ -1,0 +1,5 @@
+This is myfile.txt created for AWS CLI practice.
+Author: Shravani Jawalkar
+Date: November 7, 2025
+Purpose: Testing AWS S3 operations and permissions
+Content: Sample data for uploading to S3 bucket
