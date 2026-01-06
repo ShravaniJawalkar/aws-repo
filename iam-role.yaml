@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IAM Role for EC2 instances with S3 Read Access'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name prefix
+    Default: WebProject
+
+Resources:
+  ReadAccessRoleS3:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-ReadAccessRoleS3'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-ReadAccessRoleS3'
+
+Outputs:
+  ReadAccessRoleS3:
+    Description: IAM Role name for EC2 instances with S3 read access
+    Value: !Ref ReadAccessRoleS3
+    Export:
+      Name: ReadAccessRoleS3
+      
+  ReadAccessRoleS3Arn:
+    Description: IAM Role ARN
+    Value: !GetAtt ReadAccessRoleS3.Arn
+    Export:
+      Name: ReadAccessRoleS3-Arn

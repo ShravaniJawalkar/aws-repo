@@ -7,29 +7,29 @@ echo "Starting user data script execution..."
 
 # Update system packages
 echo "Updating system packages..."
-yum update -y
+sudo yum update -y
 
 # Install Apache HTTP server
 echo "Installing Apache HTTP server..."
-yum install -y httpd
+sudo yum install -y httpd
 
 # Start Apache and enable it to start on boot
 echo "Starting and enabling Apache..."
-systemctl start httpd
-systemctl enable httpd
+sudo systemctl start httpd
+sudo systemctl enable httpd
 
 # Sync static website files from S3 to Apache document root
 # Note: Instance must have IAM role with S3 read permissions
 echo "Syncing website files from S3..."
-aws s3 sync s3://shravani-jawalkar-web-project /var/www/html --region ap-south-1
+sudo aws s3 sync s3://shravani-jawalkar-web-project /var/www/html --region ap-south-1
 
 # Set proper permissions
 echo "Setting file permissions..."
-chmod -R 755 /var/www/html
-chown -R apache:apache /var/www/html
+sudo chmod -R 755 /var/www/html
+sudo chown -R apache:apache /var/www/html
 
 # Restart Apache to ensure everything is loaded
 echo "Restarting Apache..."
-systemctl restart httpd
+sudo systemctl restart httpd
 
 echo "User data script completed successfully!"
