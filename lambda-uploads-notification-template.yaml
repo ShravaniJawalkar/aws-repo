@@ -1,0 +1,229 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lambda function for async invocation of image upload notifications'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: webproject
+    Description: Name of the project
+  
+  SQSQueueArn:
+    Type: String
+    Default: arn:aws:sqs:ap-south-1:908601827639:webproject-UploadsNotificationQueue
+    Description: ARN of the SQS queue to read messages from
+
+  SQSQueueUrl:
+    Type: String
+    Default: https://sqs.ap-south-1.amazonaws.com/908601827639/webproject-UploadsNotificationQueue
+    Description: URL of the SQS queue to read messages from
+
+  SNSTopicArn:
+    Type: String
+    Default: arn:aws:sns:ap-south-1:908601827639:webproject-UploadsNotificationTopic
+    Description: ARN of the SNS topic to publish notifications to
+
+  LambdaRuntime:
+    Type: String
+    Default: nodejs18.x
+    AllowedValues:
+      - nodejs18.x
+      - nodejs16.x
+      - nodejs14.x
+    Description: Lambda runtime environment
+
+Resources:
+  # =========================================================================
+  # IAM ROLE FOR LAMBDA
+  # =========================================================================
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-UploadsNotificationFunction-Role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+
+  # =========================================================================
+  # IAM POLICIES FOR LAMBDA
+  # =========================================================================
+
+  # Basic Lambda execution policy (CloudWatch Logs)
+  BasicLambdaPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: LambdaExecutionRole
+    Properties:
+      PolicyName: !Sub '${ProjectName}-lambda-basic-policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub 'arn:aws:logs:ap-south-1:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-UploadsNotificationFunction:*'
+      Roles:
+        - !Ref LambdaExecutionRole
+
+  # SQS Queue Read Permissions
+  SQSReadPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: LambdaExecutionRole
+    Properties:
+      PolicyName: !Sub '${ProjectName}-lambda-sqs-read-policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:ChangeMessageVisibility
+            Resource: !Ref SQSQueueArn
+      Roles:
+        - !Ref LambdaExecutionRole
+
+  # SNS Topic Publish Permissions
+  SNSPublishPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: LambdaExecutionRole
+    Properties:
+      PolicyName: !Sub '${ProjectName}-lambda-sns-publish-policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sns:Publish
+            Resource: !Ref SNSTopicArn
+      Roles:
+        - !Ref LambdaExecutionRole
+
+  # =========================================================================
+  # LAMBDA FUNCTION
+  # =========================================================================
+
+  UploadsNotificationFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - BasicLambdaPolicy
+      - SQSReadPolicy
+      - SNSPublishPolicy
+    Properties:
+      FunctionName: !Sub '${ProjectName}-UploadsNotificationFunction'
+      Runtime: !Ref LambdaRuntime
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref SNSTopicArn
+      Code:
+        ZipFile: |
+          const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
+          const snsClient = new SNSClient({ region: 'ap-south-1' });
+          const SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN;
+          exports.handler = async (event, context) => {
+            console.log('Received event:', JSON.stringify(event, null, 2));
+            const results = { successCount: 0, failureCount: 0, processedMessages: [], batchItemFailures: [] };
+            if (!event.Records || event.Records.length === 0) {
+              console.log('No records found');
+              return { batchItemFailures: [] };
+            }
+            for (const record of event.Records) {
+              try {
+                console.log(`Processing Message ID: ${record.messageId}`);
+                let uploadEvent = JSON.parse(record.body);
+                if (!uploadEvent || !uploadEvent.fileName) throw new Error('Invalid upload event');
+                const fileExtension = uploadEvent.fileExtension || '.unknown';
+                const fileSize = uploadEvent.fileSize || 0;
+                const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+                const notificationMessage = 'Image Upload Notification\n' + 
+                  '==========================\n' +
+                  'File Name: ' + uploadEvent.fileName + '\n' +
+                  'File Size: ' + fileSizeMB + ' MB\n' +
+                  'Extension: ' + fileExtension + '\n' +
+                  'Description: ' + (uploadEvent.description || 'No description') + '\n' +
+                  'Uploaded By: ' + (uploadEvent.uploadedBy || 'System') + '\n' +
+                  'Timestamp: ' + (uploadEvent.timestamp || new Date().toISOString()) + '\n' +
+                  'Event ID: ' + (uploadEvent.eventId || 'N/A');
+                console.log(`Publishing notification for: ${uploadEvent.fileName}`);
+                const publishResult = await snsClient.send(new PublishCommand({
+                  TopicArn: SNS_TOPIC_ARN,
+                  Subject: 'Image Upload Notification: ' + uploadEvent.fileName,
+                  Message: notificationMessage,
+                  MessageAttributes: {
+                    ImageExtension: { StringValue: fileExtension, DataType: 'String' },
+                    FileSize: { StringValue: fileSize.toString(), DataType: 'Number' },
+                    EventType: { StringValue: 'ImageUpload', DataType: 'String' }
+                  }
+                }));
+                console.log(`Published to SNS. Message ID: ${publishResult.MessageId}`);
+                results.successCount++;
+                results.processedMessages.push({
+                  messageId: record.messageId,
+                  status: 'success',
+                  snsMessageId: publishResult.MessageId,
+                  fileName: uploadEvent.fileName
+                });
+              } catch (error) {
+                console.error(`Error processing message: ${error.message}`);
+                results.failureCount++;
+                results.processedMessages.push({
+                  messageId: record.messageId,
+                  status: 'failed',
+                  reason: error.message
+                });
+                results.batchItemFailures.push({ itemId: record.messageId });
+              }
+            }
+            console.log('Results:', JSON.stringify(results, null, 2));
+            return { batchItemFailures: results.batchItemFailures };
+          };
+
+  # =========================================================================
+  # SQS EVENT SOURCE MAPPING (Lambda Trigger)
+  # =========================================================================
+
+  SQSEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !Ref SQSQueueArn
+      FunctionName: !GetAtt UploadsNotificationFunction.Arn
+      Enabled: true
+      BatchSize: 10
+      MaximumBatchingWindowInSeconds: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt UploadsNotificationFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-UploadsNotificationFunction-Arn'
+
+  LambdaFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref UploadsNotificationFunction
+    Export:
+      Name: !Sub '${ProjectName}-UploadsNotificationFunction-Name'
+
+  ExecutionRoleArn:
+    Description: ARN of the Lambda execution role
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub '${ProjectName}-LambdaExecutionRole-Arn'
+
+  EventSourceMappingId:
+    Description: Event Source Mapping ID for SQS trigger
+    Value: !Ref SQSEventSourceMapping
+    Export:
+      Name: !Sub '${ProjectName}-SQSEventSourceMapping-Id'

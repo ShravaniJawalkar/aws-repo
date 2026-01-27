@@ -1,0 +1,341 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lambda function for data consistency check between RDS and S3'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: webproject
+    Description: Project name
+
+  S3BucketName:
+    Type: String
+    Default: shravani-jawalkar-webproject-bucket
+    Description: S3 bucket name
+
+  DBHost:
+    Type: String
+    Default: webproject-database.c14e66sq09ij.ap-south-1.rds.amazonaws.com
+    Description: RDS database endpoint
+
+  DBUser:
+    Type: String
+    Default: admin
+    Description: RDS database username
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: RDS database password
+
+  DBName:
+    Type: String
+    Default: webproject
+    Description: RDS database name
+
+  VpcId:
+    Type: String
+    Default: vpc-04304d2648a6d0753
+    Description: VPC ID for Lambda deployment
+
+  SubnetIds:
+    Type: CommaDelimitedList
+    Default: subnet-0e1d9c7a7b9e5c9c1,subnet-0f1e9c7a7b9e5c9c2
+    Description: Subnet IDs for Lambda deployment (must be in same VPC as RDS)
+
+  DBSecurityGroupId:
+    Type: String
+    Default: sg-0f1e9c7a7b9e5c9c1
+    Description: RDS security group ID
+
+Resources:
+  # =========================================================================
+  # VPC ENDPOINT FOR S3 (FOR SECURE PRIVATE ACCESS)
+  # =========================================================================
+
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      RouteTableIds: []
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - 's3:GetObject'
+              - 's3:ListBucket'
+            Resource:
+              - !Sub 'arn:aws:s3:::${S3BucketName}'
+              - !Sub 'arn:aws:s3:::${S3BucketName}/*'
+
+  # =========================================================================
+  # LAMBDA SECURITY GROUP (FOR DATABASE ACCESS)
+  # =========================================================================
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-lambda-sg'
+      GroupDescription: Security group for Lambda to access RDS
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.0.0.0/16
+          Description: MySQL to RDS
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS for AWS SDK calls
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-lambda-sg'
+
+  # =========================================================================
+  # IAM ROLE FOR LAMBDA
+  # =========================================================================
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-DataConsistencyFunction-Role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+  # =========================================================================
+  # IAM POLICIES
+  # =========================================================================
+
+  # Basic Lambda execution policy (CloudWatch Logs, VPC)
+  BasicLambdaPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: LambdaExecutionRole
+    Properties:
+      PolicyName: !Sub '${ProjectName}-lambda-basic-policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-DataConsistencyFunction:*'
+          - Effect: Allow
+            Action:
+              - ec2:CreateNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DeleteNetworkInterface
+            Resource: '*'
+      Roles:
+        - !Ref LambdaExecutionRole
+
+  # S3 bucket read permissions
+  S3ReadPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: LambdaExecutionRole
+    Properties:
+      PolicyName: !Sub '${ProjectName}-lambda-s3-read-policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:ListBucket'
+            Resource:
+              - !Sub 'arn:aws:s3:::${S3BucketName}'
+              - !Sub 'arn:aws:s3:::${S3BucketName}/*'
+      Roles:
+        - !Ref LambdaExecutionRole
+
+  # RDS database access permissions
+  RDSAccessPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: LambdaExecutionRole
+    Properties:
+      PolicyName: !Sub '${ProjectName}-lambda-rds-policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'rds-db:connect'
+            Resource: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:dbuser:*/*'
+      Roles:
+        - !Ref LambdaExecutionRole
+
+  # =========================================================================
+  # LAMBDA FUNCTION
+  # =========================================================================
+
+  DataConsistencyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-DataConsistencyFunction'
+      Runtime: nodejs18.x
+      Handler: data-consistency.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      MemorySize: 512
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref SubnetIds
+      Environment:
+        Variables:
+          DB_HOST: !Ref DBHost
+          DB_USER: !Ref DBUser
+          DB_PASSWORD: !Ref DBPassword
+          DB_NAME: !Ref DBName
+          S3_BUCKET: !Ref S3BucketName
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: data-consistency-lambda.zip
+
+  # =========================================================================
+  # EVENTBRIDGE RULE FOR SCHEDULED INVOCATION (EVERY 5 MINUTES)
+  # =========================================================================
+
+  ScheduledInvocationRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-data-consistency-scheduled'
+      Description: Trigger data consistency check every 5 minutes
+      ScheduleExpression: 'rate(5 minutes)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt DataConsistencyFunction.Arn
+          Id: !Sub '${ProjectName}-scheduled-target'
+          RoleArn: !GetAtt EventBridgeRole.Arn
+          Input: |
+            {
+              "source": "aws.events",
+              "detailType": "scheduled",
+              "detail": {
+                "invocationType": "EventBridge scheduled"
+              }
+            }
+
+  # EventBridge role to invoke Lambda
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-eventbridge-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt DataConsistencyFunction.Arn
+
+  # Permission for EventBridge to invoke Lambda
+  LambdaInvokePermissionEventBridge:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DataConsistencyFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduledInvocationRule.Arn
+
+  # =========================================================================
+  # API GATEWAY FOR SYNCHRONOUS INVOCATION
+  # =========================================================================
+
+  DataConsistencyApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${ProjectName}-data-consistency-api'
+      Description: API for triggering data consistency checks
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  ConsistencyCheckResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref DataConsistencyApi
+      ParentId: !GetAtt DataConsistencyApi.RootResourceId
+      PathPart: consistency
+
+  ConsistencyCheckMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref DataConsistencyApi
+      ResourceId: !Ref ConsistencyCheckResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DataConsistencyFunction.Arn}/invocations'
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+
+  ConsistencyCheckDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ConsistencyCheckMethod
+    Properties:
+      RestApiId: !Ref DataConsistencyApi
+      StageName: prod
+
+  LambdaInvokePermissionApiGateway:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DataConsistencyFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DataConsistencyApi}/*/*'
+
+  # =========================================================================
+  # OUTPUTS
+  # =========================================================================
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the Data Consistency Lambda function
+    Value: !GetAtt DataConsistencyFunction.Arn
+
+  LambdaFunctionName:
+    Description: Name of the Data Consistency Lambda function
+    Value: !Ref DataConsistencyFunction
+
+  ApiGatewayEndpoint:
+    Description: API Gateway endpoint for triggering consistency checks
+    Value: !Sub 'https://${DataConsistencyApi}.execute-api.${AWS::Region}.amazonaws.com/prod/consistency'
+
+  S3VPCEndpointId:
+    Description: S3 VPC Endpoint ID for secure bucket access
+    Value: !Ref S3VPCEndpoint
+
+  LambdaSecurityGroupId:
+    Description: Security group ID for Lambda function
+    Value: !Ref LambdaSecurityGroup
+
+  ScheduledRuleArn:
+    Description: EventBridge rule for scheduled invocation
+    Value: !GetAtt ScheduledInvocationRule.Arn

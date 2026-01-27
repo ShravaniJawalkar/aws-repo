@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SQS and SNS resources for image upload notifications'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: webproject
+    Description: Name of the project
+
+Resources:
+  # =========================================================================
+  # SQS QUEUE
+  # =========================================================================
+
+  UploadsNotificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-UploadsNotificationQueue'
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 86400  # 24 hours
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Purpose
+          Value: ImageUploadNotifications
+
+  # =========================================================================
+  # SNS TOPIC
+  # =========================================================================
+
+  UploadsNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ProjectName}-UploadsNotificationTopic'
+      DisplayName: Image Upload Notifications
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Purpose
+          Value: ImageUploadNotifications
+
+  # =========================================================================
+  # SQS QUEUE POLICY (Allow SNS to send messages)
+  # =========================================================================
+
+  QueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref UploadsNotificationQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt UploadsNotificationQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref UploadsNotificationTopic
+
+  # =========================================================================
+  # SNS SUBSCRIPTION (Subscribe SQS Queue to SNS Topic)
+  # =========================================================================
+
+  SQStoSNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref UploadsNotificationTopic
+      Protocol: sqs
+      Endpoint: !GetAtt UploadsNotificationQueue.Arn
+      RawMessageDelivery: false
+
+Outputs:
+  QueueName:
+    Description: Name of the SQS queue
+    Value: !GetAtt UploadsNotificationQueue.QueueName
+    Export:
+      Name: !Sub '${ProjectName}-UploadsNotificationQueue-Name'
+
+  QueueUrl:
+    Description: URL of the SQS queue
+    Value: !Ref UploadsNotificationQueue
+    Export:
+      Name: !Sub '${ProjectName}-UploadsNotificationQueue-Url'
+
+  QueueArn:
+    Description: ARN of the SQS queue
+    Value: !GetAtt UploadsNotificationQueue.Arn
+    Export:
+      Name: !Sub '${ProjectName}-UploadsNotificationQueue-Arn'
+
+  TopicName:
+    Description: Name of the SNS topic
+    Value: !GetAtt UploadsNotificationTopic.TopicName
+    Export:
+      Name: !Sub '${ProjectName}-UploadsNotificationTopic-Name'
+
+  TopicArn:
+    Description: ARN of the SNS topic
+    Value: !Ref UploadsNotificationTopic
+    Export:
+      Name: !Sub '${ProjectName}-UploadsNotificationTopic-Arn'
+
+  SubscriptionArn:
+    Description: ARN of the SNS subscription (SQS to SNS)
+    Value: !Ref SQStoSNSSubscription
+    Export:
+      Name: !Sub '${ProjectName}-SQStoSNS-SubscriptionArn'

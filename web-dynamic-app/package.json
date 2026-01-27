@@ -1,10 +1,11 @@
 {
   "name": "web-dynamic-app",
-  "version": "2.0.0",
-  "description": "Dynamic web application with S3 image management and AWS EC2 metadata",
-  "main": "app.js",
+  "version": "1.0.0",
+  "description": "Dynamic web application with S3 image management, notifications, and SNS subscriptions",
+  "main": "app-enhanced.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app-enhanced.js",
+    "dev": "node app-enhanced.js"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -16,11 +17,13 @@
   "keywords": [
     "aws",
     "ec2",
+    "metadata",
     "s3",
-    "image-management",
-    "express"
+    "sqs",
+    "sns",
+    "express",
+    "notifications"
   ],
   "author": "",
   "license": "ISC"
 }
-

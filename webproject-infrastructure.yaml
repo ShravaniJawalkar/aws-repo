@@ -244,7 +244,7 @@ Resources:
           Value: !Sub '${ProjectName}-DB-SubnetGroup'
 
   # =====================================
-  # IAM Role for S3 Read Access
+  # IAM Role for EC2 Instances
   # =====================================
   EC2S3ReadRole:
     Type: AWS::IAM::Role
@@ -258,7 +258,7 @@ Resources:
               Service: ec2.amazonaws.com
             Action: 'sts:AssumeRole'
       Policies:
-        - PolicyName: S3ReadPolicy
+        - PolicyName: S3ReadWritePolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -271,6 +271,35 @@ Resources:
                 Resource:
                   - !Sub 'arn:aws:s3:::${ProjectS3Bucket}'
                   - !Sub 'arn:aws:s3:::${ProjectS3Bucket}/*'
+        - PolicyName: SQSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sqs:SendMessage'
+                  - 'sqs:GetQueueUrl'
+                  - 'sqs:GetQueueAttributes'
+                Resource: 'arn:aws:sqs:*:*:*webproject*'
+        - PolicyName: SNSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sns:Publish'
+                Resource: 'arn:aws:sns:*:*:*webproject*'
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogStreams'
+                Resource: 'arn:aws:logs:*:*:*'
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-S3-Read-Role'
@@ -306,38 +335,99 @@ Resources:
           Fn::Base64: !Sub |
             #!/bin/bash
             set -e
+            
+            # Log all output
+            exec > >(tee /var/log/webproject-deploy.log)
+            exec 2>&1
+            
+            echo "=========================================="
+            echo "Starting WebProject Application Deployment"
+            echo "=========================================="
 
             # Update system
+            echo "Updating system packages..."
             yum update -y
 
-            # Install Node.js
-            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-            export NVM_DIR="$HOME/.nvm"
-            source "$NVM_DIR/nvm.sh"
-            nvm install 18
+            # Install Node.js 18.x
+            echo "Installing Node.js 18.x..."
+            curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+            yum install -y nodejs
+
+            # Verify installations
+            echo "Node.js version: $(node --version)"
+            echo "NPM version: $(npm --version)"
 
             # Create application directory
-            mkdir -p /home/ec2-user/webapp
-            cd /home/ec2-user/webapp
+            echo "Creating application directory..."
+            mkdir -p /home/ec2-user/webproject
+            cd /home/ec2-user/webproject
+            chown -R ec2-user:ec2-user /home/ec2-user/webproject
 
-            # Copy application from S3
-            aws s3 cp s3://${ProjectS3Bucket}/app-s3-enhanced.js . --region ${AWS::Region}
-            aws s3 cp s3://${ProjectS3Bucket}/package.json . --region ${AWS::Region}
+            # Download application from S3
+            echo "Downloading application from S3..."
+            sudo -u ec2-user aws s3 cp s3://${ProjectS3Bucket}/webproject-app.zip . --region ${AWS::Region}
 
-            # Install dependencies
-            npm install
+            # Unzip application
+            echo "Extracting application..."
+            unzip -o webproject-app.zip
 
-            # Install PM2
+            # Install dependencies as ec2-user
+            echo "Installing application dependencies..."
+            sudo -u ec2-user npm install
+
+            # Install PM2 globally
+            echo "Installing PM2 process manager..."
             npm install -g pm2
 
-            # Start application
-            export S3_BUCKET=${ProjectS3Bucket}
-            pm2 start app-s3-enhanced.js --name "web-app"
-            pm2 startup
-            pm2 save
+            # Create environment configuration file
+            echo "Creating environment configuration..."
+            cat > /home/ec2-user/webproject/.env << EOF
+            AWS_REGION=${AWS::Region}
+            S3_BUCKET_NAME=${ProjectS3Bucket}
+            SQS_QUEUE_URL=https://sqs.${AWS::Region}.amazonaws.com/908601827639/webproject-UploadsNotificationQueue
+            SQS_QUEUE_ARN=arn:aws:sqs:${AWS::Region}:908601827639:webproject-UploadsNotificationQueue
+            SNS_TOPIC_ARN=arn:aws:sns:${AWS::Region}:908601827639:webproject-UploadsNotificationTopic
+            PORT=3000
+            NODE_ENV=production
+            EOF
 
-            # Optional: Enable auto-restart on reboot
-            systemctl enable pm2-ec2-user
+            chown ec2-user:ec2-user /home/ec2-user/webproject/.env
+            chmod 600 /home/ec2-user/webproject/.env
+
+            # Create systemd service file for direct Node.js startup
+            cat > /etc/systemd/system/webproject-app.service << 'SVCEOF'
+            [Unit]
+            Description=WebProject Application
+            After=network.target
+            
+            [Service]
+            Type=simple
+            User=ec2-user
+            WorkingDirectory=/home/ec2-user/webproject
+            ExecStart=/usr/bin/node /home/ec2-user/webproject/app-enhanced.js
+            Restart=always
+            RestartSec=5
+            StandardOutput=append:/var/log/webproject-app.log
+            StandardError=append:/var/log/webproject-app.log
+            
+            [Install]
+            WantedBy=multi-user.target
+            SVCEOF
+
+            systemctl daemon-reload
+            systemctl enable webproject-app.service
+            systemctl start webproject-app.service
+
+            # Log application status
+            echo "=========================================="
+            echo "Application Deployment Complete!"
+            echo "=========================================="
+            echo "Application running at: http://localhost:3000"
+            echo "Service Status:"
+            systemctl status webproject-app.service
+            echo "Application Logs:"
+            sleep 5 && tail -20 /var/log/webproject-app.log
+            echo "=========================================="
 
   # =====================================
   # RDS MySQL Database Instance

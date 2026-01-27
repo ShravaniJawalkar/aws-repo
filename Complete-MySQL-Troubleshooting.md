@@ -9,7 +9,8 @@ Run these on EC2 to check:
 python3 --version
 
 # Check pip
-pip3 --version
+npm --version
+node --version
 
 # Check if pip3 can install packages
 pip3 list | head -10
