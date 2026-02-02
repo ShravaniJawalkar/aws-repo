@@ -1,0 +1,240 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM Template for webproject-UploadsNotificationFunction with SQS trigger
+  and SNS publishing
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: nodejs18.x
+    Tracing: Active
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+Parameters:
+  ProjectName:
+    Type: String
+    Default: webproject
+    Description: Name of the project
+  SQSQueueArn:
+    Type: String
+    Default: arn:aws:sqs:ap-south-1:908601827639:webproject-UploadsNotificationQueue
+    Description: ARN of the SQS queue to read messages from
+  SQSQueueUrl:
+    Type: String
+    Default: https://sqs.ap-south-1.amazonaws.com/908601827639/webproject-UploadsNotificationQueue
+    Description: URL of the SQS queue to read messages from
+  SNSTopicArn:
+    Type: String
+    Default: arn:aws:sns:ap-south-1:908601827639:webproject-UploadsNotificationTopic
+    Description: ARN of the SNS topic to publish notifications to
+Resources:
+  UploadsNotificationFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-uploads-notification-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+      - PolicyName: SQSReadPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+            - sqs:ChangeMessageVisibility
+            Resource:
+              Ref: SQSQueueArn
+      - PolicyName: SNSPublishPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - sns:Publish
+            Resource:
+              Ref: SNSTopicArn
+      - PolicyName: CloudWatchLogsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+              Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-uploads-notification-function:*
+      - PolicyName: XRayWritePolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - xray:PutTraceSegments
+            - xray:PutTelemetryRecords
+            Resource: '*'
+  UploadsNotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${ProjectName}-uploads-notification-function
+      CodeUri: UploadsNotificationFunction
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+        - UploadsNotificationFunctionRole
+        - Arn
+      Runtime: nodejs18.x
+      Timeout: 30
+      MemorySize: 256
+      Tracing: Active
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN:
+            Ref: SNSTopicArn
+          SQS_QUEUE_URL:
+            Ref: SQSQueueUrl
+          PROJECT_NAME:
+            Ref: ProjectName
+          LOG_LEVEL: INFO
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Ref: SQSQueueArn
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 5
+            FunctionResponseTypes:
+            - ReportBatchItemFailures
+            ScalingConfig:
+              MaximumConcurrency: 2
+      Tags:
+        Environment: production
+        Project:
+          Ref: ProjectName
+        ManagedBy: SAM
+    Metadata:
+      SamResourceId: UploadsNotificationFunction
+  S3LogsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${ProjectName}-s3-logs-function
+      CodeUri: S3LogsFunction
+      Handler: s3-logs-handler.handler
+      Runtime: nodejs18.x
+      Timeout: 30
+      MemorySize: 128
+      Tracing: Active
+      Environment:
+        Variables:
+          PROJECT_NAME:
+            Ref: ProjectName
+          LOG_LEVEL: INFO
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - s3:GetObject
+          - s3:ListBucket
+          Resource:
+          - arn:aws:s3:::*
+          - arn:aws:s3:::*/*
+        - Effect: Allow
+          Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          Resource:
+            Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-s3-logs-function:*
+      Tags:
+        Environment: production
+        Project:
+          Ref: ProjectName
+        ManagedBy: SAM
+    Metadata:
+      SamResourceId: S3LogsFunction
+  UploadsNotificationFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${ProjectName}-uploads-notification-function
+      RetentionInDays: 14
+  S3LogsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${ProjectName}-s3-logs-function
+      RetentionInDays: 14
+Outputs:
+  UploadsNotificationFunctionArn:
+    Description: ARN of the UploadsNotificationFunction
+    Value:
+      Fn::GetAtt:
+      - UploadsNotificationFunction
+      - Arn
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-UploadsNotificationFunction-Arn
+  UploadsNotificationFunctionName:
+    Description: Name of the UploadsNotificationFunction
+    Value:
+      Ref: UploadsNotificationFunction
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-UploadsNotificationFunction-Name
+  UploadsNotificationFunctionRoleArn:
+    Description: ARN of the Lambda execution role
+    Value:
+      Fn::GetAtt:
+      - UploadsNotificationFunctionRole
+      - Arn
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-UploadsNotificationFunction-Role-Arn
+  S3LogsFunctionArn:
+    Description: ARN of the S3LogsFunction (test/demo function)
+    Value:
+      Fn::GetAtt:
+      - S3LogsFunction
+      - Arn
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-S3LogsFunction-Arn
+  S3LogsFunctionName:
+    Description: Name of the S3LogsFunction
+    Value:
+      Ref: S3LogsFunction
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-S3LogsFunction-Name
+  UploadsNotificationFunctionLogGroupName:
+    Description: CloudWatch Log Group for UploadsNotificationFunction
+    Value:
+      Ref: UploadsNotificationFunctionLogGroup
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-UploadsNotificationFunction-LogGroup
+  S3LogsFunctionLogGroupName:
+    Description: CloudWatch Log Group for S3LogsFunction
+    Value:
+      Ref: S3LogsFunctionLogGroup
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-S3LogsFunction-LogGroup

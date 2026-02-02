@@ -1,0 +1,29 @@
+{
+  "name": "webproject-uploads-notification",
+  "version": "1.0.0",
+  "description": "SAM application for webproject UploadsNotificationFunction",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "sam build",
+    "deploy": "sam deploy --guided",
+    "local-start": "sam local start-api",
+    "local-invoke": "sam local invoke UploadsNotificationFunction -e events/sqs-event.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sns": "^3.400.0",
+    "@aws-sdk/client-s3": "^3.400.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.400.0"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "aws",
+    "lambda",
+    "sqs",
+    "sns",
+    "serverless",
+    "sam"
+  ],
+  "author": "",
+  "license": "ISC"
+}

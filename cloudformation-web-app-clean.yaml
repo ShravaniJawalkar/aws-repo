@@ -4,18 +4,13 @@ Description: 'CloudFormation template for EC2 instance with SQS/SNS web applicat
 Parameters:
   ProjectName:
     Type: String
-    Default: 'webproject'
-    Description: 'Project name used for resource naming'
-  
-  ProjectAMI:
-    Type: String
-    Description: 'AMI ID for EC2 instance'
-    Default: 'ami-0c55b159cbfafe1f0'  # Amazon Linux 2 in ap-south-1
+    Default: webproject
+    Description: Project name used for resource naming
   
   ProjectInstanceType:
     Type: String
-    Description: 'EC2 instance type'
-    Default: 't3.micro'
+    Description: EC2 instance type
+    Default: t3.micro
     AllowedValues:
       - t2.micro
       - t2.small
@@ -24,31 +19,23 @@ Parameters:
   
   SSHLocation:
     Type: String
-    Description: 'IP address range that can SSH to EC2 instances'
-    Default: '0.0.0.0/0'
-    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
-    ConstraintDescription: 'Must be a valid IP CIDR range'
-
-  SQSQueueURL:
-    Type: String
-    Description: 'SQS Queue URL for notifications'
-    Default: ''
-  
-  SNSTopicARN:
-    Type: String
-    Description: 'SNS Topic ARN for notifications'
-    Default: ''
+    Description: IP address range that can SSH to EC2 instances
+    Default: 0.0.0.0/0
   
   KeyName:
     Type: String
-    Description: 'EC2 Key Pair name for SSH access'
-    Default: 'web-server'
+    Description: EC2 Key Pair name for SSH access
+    Default: web-server
+  
+  SQSQueueURL:
+    Type: String
+    Description: SQS Queue URL for notifications
+  
+  SNSTopicARN:
+    Type: String
+    Description: SNS Topic ARN for notifications
 
 Resources:
-  # =====================================================================
-  # IAM Role for EC2 Instance
-  # =====================================================================
-  
   WebAppInstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -59,66 +46,58 @@ Resources:
           - Effect: Allow
             Principal:
               Service: ec2.amazonaws.com
-            Action: 'sts:AssumeRole'
+            Action: sts:AssumeRole
       Policies:
-        # S3 Access
         - PolicyName: S3Access
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - 's3:GetObject'
-                  - 's3:PutObject'
-                  - 's3:DeleteObject'
-                  - 's3:ListBucket'
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
                 Resource:
-                  - 'arn:aws:s3:::*'
-                  - 'arn:aws:s3:::*/*'
+                  - arn:aws:s3:::*
+                  - arn:aws:s3:::*/*
         
-        # SQS Access
         - PolicyName: SQSAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - 'sqs:SendMessage'
-                  - 'sqs:ReceiveMessage'
-                  - 'sqs:DeleteMessage'
-                  - 'sqs:GetQueueAttributes'
-                  - 'sqs:GetQueueUrl'
-                Resource: 
-                  - 'arn:aws:sqs:ap-south-1:908601827639:webproject-UploadsNotificationQueue'
-                  - 'arn:aws:sqs:ap-south-1:*:*'
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                Resource: arn:aws:sqs:ap-south-1:*:*
         
-        # SNS Access
         - PolicyName: SNSAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - 'sns:Publish'
-                  - 'sns:Subscribe'
-                  - 'sns:Unsubscribe'
-                  - 'sns:ListSubscriptionsByTopic'
-                Resource: 
-                  - 'arn:aws:sns:ap-south-1:908601827639:webproject-UploadsNotificationTopic'
-                  - 'arn:aws:sns:ap-south-1:*:*'
+                  - sns:Publish
+                  - sns:Subscribe
+                  - sns:Unsubscribe
+                  - sns:ListSubscriptionsByTopic
+                Resource: arn:aws:sns:ap-south-1:*:*
         
-        # CloudWatch Logs
         - PolicyName: CloudWatchLogs
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - 'logs:CreateLogGroup'
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
-                  - 'logs:DescribeLogStreams'
-                Resource: 'arn:aws:logs:ap-south-1:*:*'
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: arn:aws:logs:ap-south-1:*:*
 
   WebAppInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -126,62 +105,49 @@ Resources:
       Roles:
         - !Ref WebAppInstanceRole
 
-  # =====================================================================
-  # Security Groups
-  # =====================================================================
-  
   WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: !Sub '${ProjectName}-web-sg'
-      GroupDescription: 'Security group for web application'
+      GroupDescription: Security group for web application
       SecurityGroupIngress:
-        # SSH
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref SSHLocation
-          Description: 'SSH access'
+          Description: SSH access
         
-        # HTTP
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-          Description: 'HTTP access'
+          Description: HTTP access
         
-        # HTTPS
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
-          Description: 'HTTPS access'
+          Description: HTTPS access
         
-        # Application port (8080)
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
           CidrIp: 0.0.0.0/0
-          Description: 'Application port'
+          Description: Application port
       
       SecurityGroupEgress:
-        # Allow all outbound traffic
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
-          Description: 'Allow all outbound traffic'
+          Description: Allow all outbound traffic
       
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-web-sg'
 
-  # =====================================================================
-  # EC2 Instance with Application Deployment
-  # =====================================================================
-  
   WebAppInstance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: !Ref ProjectAMI
+      ImageId: ami-0a289b56122fa70e8
       InstanceType: !Ref ProjectInstanceType
       KeyName: !Ref KeyName
       IamInstanceProfile: !Ref WebAppInstanceProfile
@@ -192,27 +158,22 @@ Resources:
         - Key: Name
           Value: !Sub '${ProjectName}-instance'
         - Key: Environment
-          Value: 'production'
+          Value: production
       
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
           set -e
           
-          # Update system
           yum update -y
           yum install -y git curl wget
           
-          # Install Node.js 18
           curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
           yum install -y nodejs
           
-          # Create application directory
           mkdir -p /var/www/web-dynamic-app
-          chown -R ec2-user:ec2-user /var/www/web-dynamic-app
           cd /var/www/web-dynamic-app
           
-          # Create package.json
           cat > package.json << 'EOF'
           {
             "name": "web-dynamic-app",
@@ -236,42 +197,26 @@ Resources:
           }
           EOF
           
-          # Create .env file with configuration
-          cat > .env << EOF
-          # AWS Configuration
+          cat > .env << 'EOF'
           AWS_REGION=ap-south-1
           AWS_PROFILE=default
-          
-          # Application
           PORT=8080
           NODE_ENV=production
-          
-          # SQS Queue Configuration
           SQS_QUEUE_URL=${SQSQueueURL}
-          
-          # SNS Topic Configuration
           SNS_TOPIC_ARN=${SNSTopicARN}
-          
-          # Background Worker Settings
           WORKER_INTERVAL_MS=30000
           SQS_BATCH_SIZE=10
           SQS_VISIBILITY_TIMEOUT=300
-          
-          # Application Logging
           LOG_LEVEL=info
           LOG_FORMAT=json
-          
-          # Feature Flags
           ENABLE_EMAIL_NOTIFICATIONS=true
           ENABLE_MESSAGE_FILTERING=true
           ENABLE_DEBUG_LOGGING=false
           EOF
           
-          # Create app.js (enhanced version)
           cat > app.js << 'APPEOF'
           const express = require('express');
           const aws = require('aws-sdk');
-          const axios = require('axios');
           const { v4: uuidv4 } = require('uuid');
           const dotenv = require('dotenv');
           
@@ -280,7 +225,6 @@ Resources:
           const app = express();
           const PORT = process.env.PORT || 8080;
           
-          // AWS Service Configuration
           const sqs = new aws.SQS({ region: 'ap-south-1' });
           const sns = new aws.SNS({ region: 'ap-south-1' });
           
@@ -290,10 +234,6 @@ Resources:
           app.use(express.json());
           app.use(express.urlencoded({ extended: true }));
           
-          // =====================================================================
-          // SUBSCRIPTION ENDPOINTS
-          // =====================================================================
-          
           app.post('/api/subscribe', async (req, res) => {
             try {
               const email = req.query.email || req.body.email;
@@ -302,17 +242,15 @@ Resources:
                 return res.status(400).json({ error: 'Valid email is required' });
               }
               
-              const params = {
+              const result = await sns.subscribe({
                 TopicArn: TOPIC_ARN,
                 Protocol: 'email',
                 Endpoint: email
-              };
-              
-              const result = await sns.subscribe(params).promise();
+              }).promise();
               
               res.status(200).json({
                 success: true,
-                message: `Subscription pending confirmation. Please check ${email} for a confirmation email from AWS.`,
+                message: `Subscription pending confirmation. Check ${email} for confirmation.`,
                 subscriptionArn: result.SubscriptionArn
               });
             } catch (error) {
@@ -329,11 +267,7 @@ Resources:
                 return res.status(400).json({ error: 'Valid email is required' });
               }
               
-              const subscriptionsParams = {
-                TopicArn: TOPIC_ARN
-              };
-              
-              const subscriptions = await sns.listSubscriptionsByTopic(subscriptionsParams).promise();
+              const subscriptions = await sns.listSubscriptionsByTopic({ TopicArn: TOPIC_ARN }).promise();
               const subscription = subscriptions.Subscriptions.find(
                 sub => sub.Protocol === 'email' && sub.Endpoint === email
               );
@@ -342,15 +276,11 @@ Resources:
                 return res.status(404).json({ error: 'Email not found in subscriptions' });
               }
               
-              const unsubParams = {
-                SubscriptionArn: subscription.SubscriptionArn
-              };
-              
-              await sns.unsubscribe(unsubParams).promise();
+              await sns.unsubscribe({ SubscriptionArn: subscription.SubscriptionArn }).promise();
               
               res.status(200).json({
                 success: true,
-                message: `${email} has been unsubscribed from image upload notifications`
+                message: `${email} has been unsubscribed`
               });
             } catch (error) {
               console.error('Unsubscription error:', error);
@@ -360,11 +290,7 @@ Resources:
           
           app.get('/api/subscriptions', async (req, res) => {
             try {
-              const params = {
-                TopicArn: TOPIC_ARN
-              };
-              
-              const subscriptions = await sns.listSubscriptionsByTopic(params).promise();
+              const subscriptions = await sns.listSubscriptionsByTopic({ TopicArn: TOPIC_ARN }).promise();
               
               res.status(200).json({
                 success: true,
@@ -380,10 +306,6 @@ Resources:
               res.status(500).json({ error: 'Failed to list subscriptions', details: error.message });
             }
           });
-          
-          // =====================================================================
-          // UPLOAD ENDPOINTS
-          // =====================================================================
           
           app.post('/api/upload', async (req, res) => {
             try {
@@ -403,7 +325,7 @@ Resources:
                 uploadedBy: 'web-application'
               };
               
-              const sqsParams = {
+              const sqsResult = await sqs.sendMessage({
                 QueueUrl: QUEUE_URL,
                 MessageBody: JSON.stringify(uploadEvent),
                 MessageAttributes: {
@@ -416,16 +338,13 @@ Resources:
                     DataType: 'String'
                   }
                 }
-              };
-              
-              const sqsResult = await sqs.sendMessage(sqsParams).promise();
+              }).promise();
               
               res.status(201).json({
                 success: true,
-                message: 'Image uploaded successfully. Notification queued.',
+                message: 'Image uploaded. Notification queued.',
                 uploadEvent: uploadEvent,
-                messageId: sqsResult.MessageId,
-                downloadUrl: `/api/download/${uploadEvent.eventId}/${fileName}`
+                messageId: sqsResult.MessageId
               });
             } catch (error) {
               console.error('Upload error:', error);
@@ -433,64 +352,39 @@ Resources:
             }
           });
           
-          app.get('/api/download/:eventId/:fileName', (req, res) => {
-            const { eventId, fileName } = req.params;
-            res.status(200).json({
-              message: 'Download endpoint',
-              eventId: eventId,
-              fileName: fileName
-            });
-          });
-          
-          // =====================================================================
-          // BACKGROUND WORKER
-          // =====================================================================
-          
           async function processSQSMessages() {
             try {
-              console.log(`[${new Date().toISOString()}] Processing SQS messages...`);
-              
-              const params = {
+              const messages = await sqs.receiveMessage({
                 QueueUrl: QUEUE_URL,
                 MaxNumberOfMessages: 10,
                 WaitTimeSeconds: 5,
                 MessageAttributeNames: ['All']
-              };
+              }).promise();
               
-              const messages = await sqs.receiveMessage(params).promise();
-              
-              if (!messages.Messages) {
-                return;
-              }
+              if (!messages.Messages) return;
               
               for (const message of messages.Messages) {
                 try {
                   const uploadEvent = JSON.parse(message.Body);
-                  const notificationText = createNotificationText(uploadEvent);
                   
-                  const publishParams = {
+                  await sns.publish({
                     TopicArn: TOPIC_ARN,
-                    Subject: `Image Upload Notification: ${uploadEvent.fileName}`,
-                    Message: notificationText,
+                    Subject: `Image Upload: ${uploadEvent.fileName}`,
+                    Message: formatNotification(uploadEvent),
                     MessageAttributes: {
                       ImageExtension: {
                         StringValue: uploadEvent.fileExtension,
                         DataType: 'String'
                       }
                     }
-                  };
+                  }).promise();
                   
-                  await sns.publish(publishParams).promise();
-                  
-                  const deleteParams = {
+                  await sqs.deleteMessage({
                     QueueUrl: QUEUE_URL,
                     ReceiptHandle: message.ReceiptHandle
-                  };
-                  
-                  await sqs.deleteMessage(deleteParams).promise();
-                  console.log('Message processed and deleted');
-                } catch (messageError) {
-                  console.error('Error processing message:', messageError);
+                  }).promise();
+                } catch (err) {
+                  console.error('Error processing message:', err);
                 }
               }
             } catch (error) {
@@ -498,26 +392,8 @@ Resources:
             }
           }
           
-          function createNotificationText(uploadEvent) {
-            return `
-          IMAGE UPLOAD NOTIFICATION
-          ========================
-          
-          File Name: ${uploadEvent.fileName}
-          File Size: ${formatFileSize(uploadEvent.fileSize)}
-          File Type: ${uploadEvent.fileExtension}
-          Upload Time: ${uploadEvent.timestamp}
-          Description: ${uploadEvent.description}
-          
-          Download: http://localhost:8080/api/download/${uploadEvent.eventId}/${uploadEvent.fileName}
-          `;
-          }
-          
-          function formatFileSize(bytes) {
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            if (bytes === 0) return '0 Bytes';
-            const i = Math.floor(Math.log(bytes) / Math.log(1024));
-            return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i];
+          function formatNotification(event) {
+            return `Image Upload Notification\n========================\nFile: ${event.fileName}\nSize: ${(event.fileSize / 1024 / 1024).toFixed(2)} MB\nTime: ${event.timestamp}\nDescription: ${event.description}`;
           }
           
           function isValidEmail(email) {
@@ -528,10 +404,6 @@ Resources:
             const lastDot = fileName.lastIndexOf('.');
             return lastDot === -1 ? '' : fileName.substring(lastDot).toLowerCase();
           }
-          
-          // =====================================================================
-          // ADMIN ENDPOINTS
-          // =====================================================================
           
           app.post('/admin/process-queue', async (req, res) => {
             try {
@@ -544,12 +416,10 @@ Resources:
           
           app.get('/admin/queue-status', async (req, res) => {
             try {
-              const params = {
+              const attributes = await sqs.getQueueAttributes({
                 QueueUrl: QUEUE_URL,
                 AttributeNames: ['All']
-              };
-              
-              const attributes = await sqs.getQueueAttributes(params).promise();
+              }).promise();
               
               res.status(200).json({
                 success: true,
@@ -563,96 +433,32 @@ Resources:
             }
           });
           
-          app.post('/admin/send-test-message', async (req, res) => {
-            try {
-              const testEvent = {
-                eventId: uuidv4(),
-                fileName: 'test-image.jpg',
-                fileSize: 2048576,
-                fileExtension: '.jpg',
-                description: 'Test message',
-                timestamp: new Date().toISOString(),
-                uploadedBy: 'test-admin'
-              };
-              
-              const params = {
-                QueueUrl: QUEUE_URL,
-                MessageBody: JSON.stringify(testEvent)
-              };
-              
-              const result = await sqs.sendMessage(params).promise();
-              
-              res.status(200).json({
-                success: true,
-                message: 'Test message sent',
-                messageId: result.MessageId
-              });
-            } catch (error) {
-              res.status(500).json({ error: 'Failed to send test message' });
-            }
-          });
-          
           app.get('/health', (req, res) => {
-            res.status(200).json({
-              status: 'healthy',
-              timestamp: new Date().toISOString()
-            });
+            res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
           });
           
           app.get('/', (req, res) => {
-            res.send(`
-              <html>
-              <head><title>Web Application</title></head>
-              <body style="font-family: Arial; padding: 20px;">
-                <h1>Web Application - SQS/SNS Subscription</h1>
-                <h2>Endpoints:</h2>
-                <ul>
-                  <li>POST /api/subscribe?email=user@example.com</li>
-                  <li>POST /api/unsubscribe?email=user@example.com</li>
-                  <li>GET /api/subscriptions</li>
-                  <li>POST /api/upload?fileName=image.jpg&fileSize=1024000</li>
-                  <li>GET /health</li>
-                  <li>GET /admin/queue-status</li>
-                  <li>POST /admin/process-queue</li>
-                  <li>POST /admin/send-test-message</li>
-                </ul>
-              </body>
-              </html>
-            `);
+            res.send(`<html><head><title>Web App</title></head><body style="font-family:Arial;padding:20px"><h1>SQS/SNS Web Application</h1><ul><li>POST /api/subscribe?email=user@example.com</li><li>POST /api/unsubscribe?email=user@example.com</li><li>GET /api/subscriptions</li><li>POST /api/upload?fileName=image.jpg&fileSize=1024000</li><li>GET /health</li><li>GET /admin/queue-status</li><li>POST /admin/process-queue</li></ul></body></html>`);
           });
           
-          // =====================================================================
-          // SERVER STARTUP
-          // =====================================================================
-          
           let workerInterval;
-          
           const server = app.listen(PORT, () => {
-            console.log(`Application started on port ${PORT}`);
-            console.log(`SQS Queue: ${QUEUE_URL}`);
-            console.log(`SNS Topic: ${TOPIC_ARN}`);
-            
-            // Start background worker
-            console.log('Starting background worker...');
+            console.log(`App listening on port ${PORT}`);
+            console.log(`SQS: ${QUEUE_URL}`);
+            console.log(`SNS: ${TOPIC_ARN}`);
             processSQSMessages();
             workerInterval = setInterval(processSQSMessages, 30000);
           });
           
           process.on('SIGTERM', () => {
-            console.log('Shutting down gracefully...');
             if (workerInterval) clearInterval(workerInterval);
-            server.close(() => {
-              console.log('Server closed');
-              process.exit(0);
-            });
+            server.close(() => process.exit(0));
           });
           APPEOF
           
-          # Install npm dependencies
           npm install
           
-          # Create systemd service file
-          sudo tee /etc/systemd/system/web-app.service > /dev/null << 'EOF'
+          cat > /etc/systemd/system/web-app.service << 'EOF'
           [Unit]
           Description=Web Application with SQS/SNS
           After=network.target
@@ -671,49 +477,31 @@ Resources:
           WantedBy=multi-user.target
           EOF
           
-          # Enable and start the service
           systemctl daemon-reload
           systemctl enable web-app
           systemctl start web-app
-          
-          # Create CloudWatch Logs
-          echo "Application deployed successfully" > /var/log/web-app-deployment.log
 
 Outputs:
   InstanceId:
-    Description: 'Instance ID of the EC2 instance'
+    Description: Instance ID of the EC2 instance
     Value: !Ref WebAppInstance
-    Export:
-      Name: !Sub '${ProjectName}-InstanceId'
   
   InstancePublicIP:
-    Description: 'Public IP address of the EC2 instance'
+    Description: Public IP address of the EC2 instance
     Value: !GetAtt WebAppInstance.PublicIp
-    Export:
-      Name: !Sub '${ProjectName}-PublicIP'
   
   InstancePrivateIP:
-    Description: 'Private IP address of the EC2 instance'
+    Description: Private IP address of the EC2 instance
     Value: !GetAtt WebAppInstance.PrivateIp
-    Export:
-      Name: !Sub '${ProjectName}-PrivateIP'
   
   SecurityGroupId:
-    Description: 'Security Group ID'
+    Description: Security Group ID
     Value: !Ref WebAppSecurityGroup
-    Export:
-      Name: !Sub '${ProjectName}-SecurityGroup'
-  
-  IAMRoleName:
-    Description: 'IAM Role Name'
-    Value: !Ref WebAppInstanceRole
-    Export:
-      Name: !Sub '${ProjectName}-IAMRole'
   
   ApplicationURL:
-    Description: 'URL to access the web application'
+    Description: URL to access the web application
     Value: !Sub 'http://${WebAppInstance.PublicIp}:8080'
   
   SSHCommand:
-    Description: 'Command to SSH into the instance'
-    Value: !Sub 'ssh -i your-key.pem ec2-user@${WebAppInstance.PublicIp}'
+    Description: Command to SSH into the instance
+    Value: !Sub 'ssh -i web-server.pem ec2-user@${WebAppInstance.PublicIp}'

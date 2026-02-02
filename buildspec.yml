@@ -1,0 +1,129 @@
+version: 0.2
+
+# CodeBuild spec for building and packaging SAM Lambda application
+# This file packages the Lambda code for deployment via CodePipeline
+# DO NOT use 'sam deploy' - deployment will be handled by CloudFormation in CodePipeline
+
+env:
+  variables:
+    # AWS Region
+    AWS_REGION: ap-south-1
+    # S3 bucket for packaged artifacts
+    S3_BUCKET: webproject-builds
+    # Project name
+    PROJECT_NAME: webproject
+    # CloudFormation stack name
+    STACK_NAME: webproject-uploads-stack
+  parameter-store:
+    # Optional: Store sensitive values in Parameter Store
+    # GITHUB_TOKEN: /github/token
+
+phases:
+  install:
+    commands:
+      - echo "=== INSTALL PHASE ==="
+      - echo "Installing AWS SAM CLI and dependencies..."
+      - pip install --upgrade pip
+      - pip install aws-sam-cli
+      - pip install aws-cli
+      - echo "Verifying AWS SAM version..."
+      - sam --version
+      - echo "Verifying AWS CLI version..."
+      - aws --version
+  
+  pre_build:
+    commands:
+      - echo "=== PRE-BUILD PHASE ==="
+      - echo "Current working directory:"
+      - pwd
+      - echo "Listing directory contents:"
+      - ls -la
+      - echo "Checking SAM template..."
+      - test -f sam-template.yaml && echo "✓ sam-template.yaml found" || echo "✗ sam-template.yaml NOT found"
+      - echo "Validating SAM template..."
+      - sam validate --template sam-template.yaml --region ${AWS_REGION}
+      - echo "✓ SAM template validation passed"
+      - echo "Installing Lambda function dependencies..."
+      - |
+        if [ -f lambda/requirements.txt ]; then
+          echo "Found Python requirements.txt"
+          pip install -r lambda/requirements.txt -t lambda/
+        fi
+      - |
+        if [ -f lambda/package.json ]; then
+          echo "Found Node.js package.json"
+          cd lambda && npm install && cd ..
+        fi
+  
+  build:
+    commands:
+      - echo "=== BUILD PHASE ==="
+      - echo "Running tests (optional)..."
+      - |
+        if [ -f tests/test.js ]; then
+          echo "Running JavaScript tests..."
+          npm test
+        else
+          echo "No test files found - skipping tests"
+        fi
+      - echo "Building SAM application..."
+      - sam build --template sam-template.yaml --use-container
+      - echo "✓ SAM build completed"
+      - echo "SAM build directory contents:"
+      - ls -la .aws-sam/build/ || true
+  
+  post_build:
+    commands:
+      - echo "=== POST-BUILD PHASE ==="
+      - echo "Packaging SAM application..."
+      - |
+        sam package \
+          --template-file .aws-sam/build/template.yaml \
+          --s3-bucket ${S3_BUCKET} \
+          --s3-prefix "webproject-builds/$(date +%Y%m%d-%H%M%S)" \
+          --region ${AWS_REGION} \
+          --output-template-file packaged.yaml
+      - echo "✓ SAM package completed"
+      - echo "Output template file generated:"
+      - test -f packaged.yaml && echo "✓ packaged.yaml created successfully" || echo "✗ packaged.yaml NOT created"
+      - echo "Contents of packaged.yaml (first 50 lines):"
+      - head -50 packaged.yaml
+      - echo "Full packaged.yaml content for CloudFormation:"
+      - cat packaged.yaml
+
+artifacts:
+  name: SAMPackageArtifacts
+  files:
+    # Packaged template for CloudFormation deployment
+    - packaged.yaml
+  discard-paths: yes
+  secondary-artifacts:
+    SAMBuildArtifacts:
+      files:
+        - .aws-sam/build/**/*
+      name: BuildOutput
+    SourceCodeArtifacts:
+      files:
+        - sam-template.yaml
+        - '**/*.js'
+        - '**/*.py'
+        - '**/*.json'
+      name: SourceCode
+
+cache:
+  paths:
+    - '/root/.cache/pip/**/*'
+    - 'node_modules/**/*'
+
+reports:
+  CodeBuildReport:
+    files:
+      - packaged.yaml
+    discard-paths: yes
+    name: PackagedTemplate
+
+# Logs configuration
+logs:
+  files:
+    - logs/codebuild.log
+  name: CodeBuildLogs

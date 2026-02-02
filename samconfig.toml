@@ -1,0 +1,17 @@
+version = 0.1
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "webproject-uploads-notification-stack"
+s3_bucket = "webproject-sam-deployments-851189"
+s3_prefix = "uploads-notification"
+region = "ap-south-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM,CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND"
+parameter_overrides = ""
+image_repositories = []
+
+[default.build]
+[default.build.parameters]
+use_container = false

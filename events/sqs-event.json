@@ -1,0 +1,33 @@
+{
+  "Records": [
+    {
+      "messageId": "19dd0b57-b21e-4ac1-bd88-01bbb068cb78",
+      "receiptHandle": "MessageReceiptHandle",
+      "body": "{\"eventId\":\"550e8400-e29b-41d4-a716-446655440000\",\"fileName\":\"sample-image-001.jpg\",\"fileSize\":2048576,\"fileExtension\":\".jpg\",\"description\":\"Sample image for testing notifications\",\"timestamp\":\"2024-01-27T10:30:45.123Z\",\"uploadedBy\":\"web-application\"}",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1545084650636",
+        "SenderId": "123456789012",
+        "ApproximateFirstReceiveTimestamp": "1545084650649"
+      },
+      "messageAttributes": {
+        "ImageExtension": {
+          "stringValue": ".jpg",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "String"
+        },
+        "EventType": {
+          "stringValue": "ImageUpload",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "String"
+        }
+      },
+      "md5OfBody": "{{{md5_of_body}}}",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:ap-south-1:123456789012:webproject-UploadsNotificationQueue",
+      "awsRegion": "ap-south-1"
+    }
+  ]
+}
