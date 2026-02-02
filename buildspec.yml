@@ -14,9 +14,6 @@ env:
     PROJECT_NAME: webproject
     # CloudFormation stack name
     STACK_NAME: webproject-uploads-stack
-  parameter-store:
-    # Optional: Store sensitive values in Parameter Store
-    # GITHUB_TOKEN: /github/token
 
 phases:
   install:
@@ -25,10 +22,9 @@ phases:
       - echo "Installing AWS SAM CLI and dependencies..."
       - pip install --upgrade pip
       - pip install aws-sam-cli
-      - pip install aws-cli
       - echo "Verifying AWS SAM version..."
       - sam --version
-      - echo "Verifying AWS CLI version..."
+      - echo "AWS CLI is included with AWS SAM CLI"
       - aws --version
   
   pre_build:
@@ -67,53 +63,56 @@ phases:
           echo "No test files found - skipping tests"
         fi
       - echo "Building SAM application..."
-      - sam build --template sam-template.yaml --use-container
+      - sam build --template sam-template.yaml
       - echo "✓ SAM build completed"
-      - echo "SAM build directory contents:"
-      - ls -la .aws-sam/build/ || true
+      - echo "Checking build output..."
+      - ls -la .aws-sam/build/ 2>&1 || echo "Build directory not found"
+      - test -f .aws-sam/build/template.yaml && echo "✓ template.yaml exists" || echo "✗ template.yaml NOT found"
   
   post_build:
     commands:
       - echo "=== POST-BUILD PHASE ==="
+      - echo "Current directory: $(pwd)"
+      - echo "Checking for SAM build template..."
+      - |
+        if [ ! -f .aws-sam/build/template.yaml ]; then
+          echo "✗ ERROR: .aws-sam/build/template.yaml not found"
+          echo "Listing current directory:"
+          ls -la
+          echo "Checking .aws-sam directory:"
+          find .aws-sam -type f 2>/dev/null | head -20
+          exit 1
+        fi
+      - echo "✓ SAM build template found"
       - echo "Packaging SAM application..."
       - |
         sam package \
           --template-file .aws-sam/build/template.yaml \
           --s3-bucket ${S3_BUCKET} \
-          --s3-prefix "webproject-builds/$(date +%Y%m%d-%H%M%S)" \
+          --s3-prefix "builds/$(date +%Y%m%d-%H%M%S)" \
           --region ${AWS_REGION} \
-          --output-template-file packaged.yaml
+          --output-template-file packaged.yaml 2>&1
       - echo "✓ SAM package completed"
-      - echo "Output template file generated:"
-      - test -f packaged.yaml && echo "✓ packaged.yaml created successfully" || echo "✗ packaged.yaml NOT created"
-      - echo "Contents of packaged.yaml (first 50 lines):"
-      - head -50 packaged.yaml
-      - echo "Full packaged.yaml content for CloudFormation:"
-      - cat packaged.yaml
+      - echo "Verifying packaged.yaml was created..."
+      - |
+        if [ -f packaged.yaml ]; then
+          echo "✓ packaged.yaml created successfully ($(wc -c < packaged.yaml) bytes)"
+          echo "First 30 lines of packaged.yaml:"
+          head -30 packaged.yaml
+        else
+          echo "✗ ERROR: packaged.yaml was NOT created"
+          exit 1
+        fi
 
 artifacts:
   name: SAMPackageArtifacts
   files:
-    # Packaged template for CloudFormation deployment
     - packaged.yaml
   discard-paths: yes
-  secondary-artifacts:
-    SAMBuildArtifacts:
-      files:
-        - .aws-sam/build/**/*
-      name: BuildOutput
-    SourceCodeArtifacts:
-      files:
-        - sam-template.yaml
-        - '**/*.js'
-        - '**/*.py'
-        - '**/*.json'
-      name: SourceCode
 
 cache:
   paths:
     - '/root/.cache/pip/**/*'
-    - 'node_modules/**/*'
 
 reports:
   CodeBuildReport:
@@ -121,9 +120,3 @@ reports:
       - packaged.yaml
     discard-paths: yes
     name: PackagedTemplate
-
-# Logs configuration
-logs:
-  files:
-    - logs/codebuild.log
-  name: CodeBuildLogs
